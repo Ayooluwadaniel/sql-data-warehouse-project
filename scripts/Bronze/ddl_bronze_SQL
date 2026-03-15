@@ -1,0 +1,145 @@
+--This script creates tables into the 'bronze' schema, dropping existing tables
+--if they already exist.
+use DataWareHouse;
+
+IF OBJECT_ID ('bronze.crm_cust_info', 'U') IS NOT NULL
+	DROP TABLE bronze.crm_cust_info;
+
+Create TABLE bronze.crm_cust_info(
+	cst_id INT,
+	cst_key NVARCHAR(50),
+	cst_firstname NVARCHAR(50),
+	cst_lastname NVARCHAR(50),
+	cst_marital_status NVARCHAR(50),
+	cst_gndr NVARCHAR(50),
+	cst_create_date DATE
+)
+IF OBJECT_ID ('bronze.crm_prd_info', 'U') IS NOT NULL
+	DROP TABLE bronze.crm_prd_info;
+Create TABLE bronze.crm_prd_info (
+	prd_id INT,
+	prd_key NVARCHAR(50),
+	prd_nm NVARCHAR(50),
+	prd_cost INT,
+	prd_line NVARCHAR(50),
+	prd_start_dt DATE,
+	prd_end_dt DATE
+)
+
+IF OBJECT_ID ('bronze.crm_sales_details', 'U') IS NOT NULL
+	DROP TABLE bronze.crm_sales_details;
+Create TABLE bronze.crm_sales_details (
+	sls_ord_num NVARCHAR(50),
+	sls_prd_key NVARCHAR(50),
+	sls_cust_id INT,
+	sls_order_dt int,
+	sls_ship_dt int,
+	sls_due_dt int,
+	sls_sales INT,
+	sls_quantity INT,
+	sls_price INT
+)
+IF OBJECT_ID ('bronze.erp_cust_az12', 'U') IS NOT NULL
+	DROP TABLE bronze.erp_cust_az12;
+Create TABLE bronze.erp_cust_az12 (
+	cid NVARCHAR(50),
+	bdate DATE,
+	gen NVARCHAR(50)
+)
+IF OBJECT_ID ('bronze.erp_loc_a101 ', 'U') IS NOT NULL
+	DROP TABLE bronze.erp_loc_a101 ;
+Create TABLE bronze.erp_loc_a101 (
+	cid NVARCHAR(50),
+	cntry NVARCHAR(50)
+)
+IF OBJECT_ID ('bronze.erp_px_cat_g1v2', 'U') IS NOT NULL
+	DROP TABLE bronze.erp_px_cat_g1v2;
+Create TABLE bronze.erp_px_cat_g1v2 (
+	id NVARCHAR(50),
+	cat NVARCHAR(50),
+	suncat NVARCHAR(50),
+	maintenance NVARCHAR(50)
+);
+
+
+
+-- Insert the csv data into the table
+
+--after then, you create a stored procedure
+EXEC bronze.load_bronze
+
+Create or alter procedure bronze.load_bronze as 
+Begin 
+	Begin Try 
+		PRINT '=============================='
+		PRINT 'Loading Bronze Layer'
+		PRINT '=============================='
+		Truncate table [Bronze].[crm_cust_info];
+		/*truncate deletes the content in the table first.
+		before you now bulk insert.
+		This helps to keep the table refreshed and up to date
+		*/
+		Bulk insert bronze.crm_cust_info
+		from 'C:\Users\DELL\Documents\SQL Server Management Studio\Data with Baraa\sql-data-warehouse-project\datasets\source_crm\cust_info.csv'
+		WITH (
+			Firstrow = 2,
+			FIELDTERMINATOR = ',',
+			TABLOCK
+		);
+
+		Truncate Table bronze.crm_prd_info;
+		Bulk insert bronze.crm_prd_info
+		from 'C:\Users\DELL\Documents\SQL Server Management Studio\Data with Baraa\sql-data-warehouse-project\datasets\source_crm\prd_info.csv'
+		with (
+			firstrow = 2,
+			FIELDTERMINATOR = ',',
+			TABLOCK
+		);
+
+		Truncate Table bronze.crm_sales_details;
+		Bulk insert bronze.crm_sales_details
+		from 'C:\Users\DELL\Documents\SQL Server Management Studio\Data with Baraa\sql-data-warehouse-project\datasets\source_crm\sales_details.csv'
+		with (
+			firstrow = 2,
+			FIELDTERMINATOR = ',',
+			TABLOCK
+		);
+
+		Truncate Table bronze.erp_cust_az12;
+
+		Bulk insert bronze.erp_cust_az12
+		from 'C:\Users\DELL\Documents\SQL Server Management Studio\Data with Baraa\sql-data-warehouse-project\datasets\source_erp\CUST_AZ12.csv'
+		with (
+			firstrow = 2,
+			FIELDTERMINATOR = ',',
+			TABLOCK
+		);
+
+		Truncate Table bronze.erp_loc_a101;
+		Bulk insert bronze.erp_loc_a101
+		from 'C:\Users\DELL\Documents\SQL Server Management Studio\Data with Baraa\sql-data-warehouse-project\datasets\source_erp\LOC_A101.csv'
+		with (
+			firstrow = 2,
+			FIELDTERMINATOR = ',',
+			TABLOCK
+		);
+
+		Truncate table [Bronze].[erp_px_cat_g1v2]
+		bulk insert [Bronze].[erp_px_cat_g1v2]
+		from 'C:\Users\DELL\Documents\SQL Server Management Studio\Data with Baraa\sql-data-warehouse-project\datasets\source_erp\PX_CAT_G1V2.csv'
+		with (
+			firstrow = 2,
+			fieldterminator = ',',
+			tablock
+		);
+	End try
+	begin catch
+		PRINT '======================'
+		PRINT 'ERROR OCCURED DURING LOADING BRONZE LAYER'
+		PRINT 'Error message:' + Error_Message();
+		PRINT 'Error message:' + cast (error_number() as NVARCHAR);
+		PRINT 'Error Message:' + cast (error_state() as NVARCHAR);
+		PRINT '======================='
+	end catch
+End
+
